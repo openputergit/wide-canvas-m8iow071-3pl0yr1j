@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Coffee Shop - Dating App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f8f4f1;
+        }
+        .chat-container {
+            height: calc(100vh - 250px);
+            background: rgba(255, 255, 255, 0.95);
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        .message {
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #a96a50;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .coffee-bg {
+            background-color: #75491b;
+            background-image: url('https://images.unsplash.com/photo-1509785307050-d4066910ec1e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1932&q=80');
+            background-blend-mode: overlay;
+            background-size: cover;
+        }
+        .typing-indicator span {
+            height: 10px;
+            width: 10px;
+            background-color: #a96a50;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 3px;
+            animation: bounce 1.5s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+        }
+        .btn-coffee {
+            background-color: #a96a50;
+        }
+        .btn-coffee:hover {
+            background-color: #8d5942;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c8a79b;
+            border-radius: 10px;
+        }
+        .interest-tag {
+            transition: all 0.2s ease;
+        }
+        .interest-tag:hover {
+            transform: translateY(-2px);
+        }
+        .call-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            z-index: 10;
+        }
+        .call-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .call-btn:hover {
+            transform: scale(1.1);
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .mini-video {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            width: 120px;
+            height: 90px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #fff;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body class="coffee-bg min-h-screen flex items-center justify-center">
+    <!-- Username Modal -->
+    <div id="usernameModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="text-center mb-6">
+                <i class="bi bi-cup-hot text-4xl text-amber-700"></i>
+                <h2 class="text-2xl font-bold mb-2 text-gray-800">Virtual Coffee Shop</h2>
+                <p class="mb-4 text-gray-600">Meet new people in a cozy virtual environment</p>
+            </div>
+            <input type="text" id="usernameInput" class="w-full p-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Enter your display name">
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Your Interests</label>
+                <p class="text-sm text-gray-500 mb-2">Select at least 3 interests to find better matches</p>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Coffee</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Books</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Movies</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Hiking</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Tech</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Music</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Travel</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Cooking</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Sports</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Art</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Gaming</div>
+                    <div class="interest-tag px-3 py-1 rounded-full text-sm cursor-pointer bg-gray-200 hover:bg-amber-100" data-selected="false" onclick="toggleInterest(this)">Fitness</div>
+                </div>
+                <p id="interestError" class="text-red-500 text-sm hidden mt-2">Please select at least 3 interests</p>
+            </div>
+            
+            <button onclick="setUsername()" class="w-full btn-coffee text-white py-3 rounded-lg transition duration-300 font-medium">
+                Start Meeting People
+            </button>
+            <p class="text-xs text-gray-500 text-center mt-4">By continuing, you agree to our community guidelines.</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6 max-w-3xl">
+        <div class="bg-white rounded-xl shadow-2xl overflow-hidden">
+            <!-- Status Bar -->
+            <div class="bg-amber-800 p-4 text-white flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="bi bi-cup-hot text-2xl mr-2"></i>
+                    <span id="statusText" class="font-medium">Virtual Coffee Shop</span>
+                </div>
+                <div class="flex items-center">
+                    <button id="showInterestsBtn" class="mr-3 bg-amber-950 hover:bg-amber-900 text-white text-sm px-3 py-1 rounded-full hidden">
+                        <i class="bi bi-tags mr-1"></i> Interests
+                    </button>
+                    <i class="bi bi-people-fill mr-1"></i>
+                    <span id="onlineCount" class="mr-2">0 online</span>
+                    <div id="connectionStatus" class="h-3 w-3 rounded-full bg-gray-400"></div>
+                    <div id="loader" class="loader ml-2"></div>
+                </div>
+            </div>
+
+            <!-- Interests Filter Popup -->
+            <div id="interestsPopup" class="hidden bg-white border-b px-4 py-3 shadow-md">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-medium text-gray-700">Filter by interests</h3>
+                    <button onclick="toggleInterestsPopup()" class="text-gray-500 hover:text-gray-700">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div id="interestFilterContainer" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- Video Call Area -->
+            <div id="callContainer" class="hidden p-4">
+                <div class="video-container">
+                    <div id="remoteVideo" class="bg-gray-800 w-full h-full relative">
+                        <div class="video-overlay pulse" id="connectingOverlay">
+                            <div class="text-center">
+                                <i class="bi bi-telephone-fill text-4xl mb-2"></i>
+                                <p>Connecting voice call...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="localVideo" class="mini-video bg-gray-900">
+                        <div class="flex items-center justify-center h-full text-white text-xs">
+                            <i class="bi bi-camera-video-off-fill mr-1"></i> Video off
+                        </div>
+                    </div>
+                    
+                    <!-- Call Controls -->
+                    <div class="call-controls">
+                        <button id="micBtn" class="call-btn bg-gray-700 text-white" onclick="toggleMic()">
+                            <i class="bi bi-mic-fill"></i>
+                        </button>
+                        <button id="videoBtn" class="call-btn bg-gray-700 text-white" onclick="toggleVideo()">
+                            <i class="bi bi-camera-video-off-fill"></i>
+                        </button>
+                        <button id="endCallBtn" class="call-btn bg-red-600 text-white" onclick="endCall()">
+                            <i class="bi bi-telephone-x-fill"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-3 flex justify-between items-center px-2">
+                    <div>
+                        <span class="text-gray-600 text-sm">
+                            <i class="bi bi-person-fill text-amber-700"></i>
+                            Talking with <span id="callPartnerName" class="font-medium">Partner</span>
+                        </span>
+                    </div>
+                    <div>
+                        <span id="callStatus" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                            <i class="bi bi-telephone-fill"></i> Voice connected
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-container p-4 flex flex-col space-y-4" id="chatArea">
+                <div class="text-center p-6">
+                    <div class="animate-pulse">
+                        <i class="bi bi-cup-hot text-5xl text-amber-700 mb-4"></i>
+                    </div>
+                    <p class="text-gray-500">Welcome to the Virtual Coffee Shop!</p>
+                    <p class="text-gray-500">Waiting to connect you with someone...</p>
+                </div>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div id="typingIndicator" class="px-4 py-2 hidden">
+                <div class="flex items-center text-gray-500 text-sm">
+                    <span id="typingUsername"></span> is typing
+                    <div class="typing-indicator ml-2">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t p-4 bg-gray-50">
+                <div class="flex space-x-2">
+                    <div class="flex-1 relative">
+                        <input type="text" id="messageInput" class="w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Type your message..." disabled>
+                        <button id="emojiBtn" class="absolute right-3 top-3 text-gray-400 hover:text-amber-500">
+                            <i class="bi bi-emoji-smile"></i>
+                        </button>
+                    </div>
+                    <button onclick="sendMessage()" id="sendBtn" class="btn-coffee text-white px-4 py-2 rounded-lg transition duration-300 disabled:opacity-50" disabled>
+                        <i class="bi bi-send"></i>
+                    </button>
+                    <button onclick="startCall()" id="callBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition duration-300 disabled:opacity-50" disabled>
+                        <i class="bi bi-telephone-fill"></i>
+                    </button>
+                    <button onclick="skipUser()" id="skipBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition duration-300 disabled:opacity-50" disabled>
+                        Skip
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center mt-4 text-white text-sm opacity-75">
+            <p>© 2023 Virtual Coffee Shop - Connect with people around the world</p>
+        </div>
+    </div>
+
+    <script>
+        let username = '';
+        let currentPartner = null;
+        let chatMessages = [];
+        let isConnected = false;
+        let typingTimeout = null;
+        let isTyping = false;
+        let userInterests = [];
+        let isInCall = false;
+        let isMicOn = true;
+        let isVideoOn = false;
+        
+        // Simulated database of online users (in real app, this would be managed by backend)
+        const onlineUsers = new Set();
+        const busyUsers = new Set();
+        const userInterestsMap = new Map();
+        
+        function toggleInterest(element) {
+            const isSelected = element.getAttribute('data-selected') === 'true';
+            if (isSelected) {
+                element.setAttribute('data-selected', 'false');
+                element.classList.remove('bg-amber-500', 'text-white');
+                element.classList.add('bg-gray-200');
+            } else {
+                element.setAttribute('data-selected', 'true');
+                element.classList.remove('bg-gray-200');
+                element.classList.add('bg-amber-500', 'text-white');
+            }
+        }
+        
+        function getSelectedInterests() {
+            const interests = [];
+            document.querySelectorAll('.interest-tag[data-selected="true"]').forEach(tag => {
+                interests.push(tag.textContent);
+            });
+            return interests;
+        }
+        
+        function setUsername() {
+            const input = document.getElementById('usernameInput');
+            const interests = getSelectedInterests();
+            
+            if (input.value.trim()) {
+                if (interests.length < 3) {
+                    document.getElementById('interestError').classList.remove('hidden');
+                    return;
+                }
+                
+                username = input.value.trim();
+                userInterests = interests;
+                document.getElementById('usernameModal').style.display = 'none';
+                document.getElementById('showInterestsBtn').classList.remove('hidden');
+                connectToServer();
+                populateInterestFilter();
+            } else {
+                input.classList.add('border-red-500');
+                setTimeout(() => input.classList.remove('border-red-500'), 1500);
+            }
+        }
+
+        function populateInterestFilter() {
+            const container = document.getElementById('interestFilterContainer');
+            userInterests.forEach(interest => {
+                const tag = document.createElement('div');
+                tag.className = 'px-3 py-1 rounded-full text-sm bg-amber-500 text-white';
+                tag.textContent = interest;
+                container.appendChild(tag);
+            });
+        }
+        
+        function toggleInterestsPopup() {
+            const popup = document.getElementById('interestsPopup');
+            popup.classList.toggle('hidden');
+        }
+
+        function connectToServer() {
+            updateConnectionStatus('connecting');
+            const loader = document.getElementById('loader');
+            loader.style.display = 'block';
+            
+            // Simulate connecting to server
+            setTimeout(() => {
+                onlineUsers.add(username);
+                userInterestsMap.set(username, userInterests);
+                updateOnlineCount();
+                updateConnectionStatus('connected');
+                findMatch();
+                loader.style.display = 'none';
+            }, 1500);
+        }
+
+        function updateConnectionStatus(status) {
+            const connectionStatus = document.getElementById('connectionStatus');
+            
+            if (status === 'connecting') {
+                connectionStatus.className = 'h-3 w-3 rounded-full bg-yellow-500';
+            } else if (status === 'connected') {
+                connectionStatus.className = 'h-3 w-3 rounded-full bg-green-500';
+                isConnected = true;
+            } else if (status === 'disconnected') {
+                connectionStatus.className = 'h-3 w-3 rounded-full bg-red-500';
+                isConnected = false;
+            }
+        }
+
+        function findMatch() {
+            const chatArea = document.getElementById('chatArea');
+            chatArea.innerHTML = `
+                <div class="text-center p-6">
+                    <div class="animate-pulse">
+                        <i class="bi bi-cup-hot text-5xl text-amber-700 mb-4"></i>
+                    </div>
+                    <p class="text-gray-500">Looking for someone with similar interests...</p>
+                </div>
+            `;
+            
+            disableChat();
+            hideCallInterface();
+            
+            // Check if there are other online users with matching interests
+            const availableUsers = Array.from(onlineUsers)
+                .filter(user => {
+                    if (user === username || busyUsers.has(user)) return false;
+                    
+                    // Check for at least one matching interest
+                    const theirInterests = userInterestsMap.get(user) || [];
+                    const matchingInterests = userInterests.filter(interest => 
+                        theirInterests.includes(interest)
+                    );
+                    
+                    return matchingInterests.length > 0;
+                });
+            
+            if (availableUsers.length === 0) {
+                // No other users available
+                setTimeout(() => {
+                    chatArea.innerHTML = `
+                        <div class="text-center p-6">
+                            <i class="bi bi-emoji-frown text-5xl text-amber-700 mb-4"></i>
+                            <p class="text-gray-700 font-medium">No one with similar interests is available right now.</p>
+                            <p class="text-gray-500 mt-2">Please try again later or wait for someone to join.</p>
+                            <button class="mt-4 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg" onclick="findMatch()">
+                                Try Again
+                            </button>
+                        </div>
+                    `;
+                }, 2000);
+            } else {
+                // Simulate finding a match
+                setTimeout(() => {
+                    const randomIndex = Math.floor(Math.random() * availableUsers.length);
+                    currentPartner = availableUsers[randomIndex];
+                    busyUsers.add(username);
+                    busyUsers.add(currentPartner);
+                    
+                    // Find matching interests
+                    const theirInterests = userInterestsMap.get(currentPartner) || [];
+                    const matchingInterests = userInterests.filter(interest => 
+                        theirInterests.includes(interest)
+                    );
+                    
+                    chatArea.innerHTML = `
+                        <div class="text-center bg-green-50 p-4 rounded-lg mb-4">
+                            <i class="bi bi-people-fill text-green-500 text-2xl mb-2"></i>
+                            <p class="text-green-700 font-medium">Connected with ${currentPartner}!</p>
+                            <div class="text-gray-600 text-sm mt-2">
+                                <p>You both like: 
+                                    <span class="font-medium">${matchingInterests.join(', ')}</span>
+                                </p>
+                            </div>
+                            <p class="text-gray-500 text-sm mt-1">Say hello or start a voice call</p>
+                        </div>
+                    `;
+                    
+                    enableChat();
+                }, 2000);
+            }
+        }
+
+        function enableChat() {
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('skipBtn').disabled = false;
+            document.getElementById('callBtn').disabled = false;
+            document.getElementById('messageInput').focus();
+        }
+
+        function disableChat() {
+            document.getElementById('messageInput').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('skipBtn').disabled = true;
+            document.getElementById('callBtn').disabled = true;
+            document.getElementById('typingIndicator').classList.add('hidden');
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message && currentPartner) {
+                const chatArea = document.getElementById('chatArea');
+                const messageElement = document.createElement('div');
+                messageElement.className = 'flex justify-end mb-2';
+                messageElement.innerHTML = `
+                    <div class="message bg-amber-700 text-white rounded-lg py-2 px-4 shadow">
+                        ${escapeHTML(message)}
+                        <div class="text-xs text-amber-200 mt-1 text-right">
+                            ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </div>
+                    </div>
+                `;
+                chatArea.appendChild(messageElement);
+                chatArea.scrollTop = chatArea.scrollHeight;
+                
+                // Store message in chat history
+                chatMessages.push({
+                    sender: username,
+                    content: message,
+                    timestamp: new Date()
+                });
+                
+                // Hide typing indicator if it was showing
+                document.getElementById('typingIndicator').classList.add('hidden');
+                
+                // Simulate partner typing response
+                simulatePartnerTyping();
+                
+                input.value = '';
+            }
+        }
+
+        function simulatePartnerTyping() {
+            // Show typing indicator
+            const typingIndicator = document.getElementById('typingIndicator');
+            document.getElementById('typingUsername').textContent = currentPartner;
+            typingIndicator.classList.remove('hidden');
+            
+            // Simulate response time based on message length (1-3 seconds)
+            const responseTime = 1000 + Math.random() * 2000;
+            
+            // Simulate partner response
+            setTimeout(() => {
+                if (currentPartner) { // Check if still connected
+                    typingIndicator.classList.add('hidden');
+                    
+                    const chatArea = document.getElementById('chatArea');
+                    const responses = [
+                        "That's interesting! Tell me more about it.",
+                        "I've been thinking about that too recently.",
+                        "I totally understand what you mean.",
+                        "How long have you been interested in that?",
+                        "That sounds great! I'd love to hear more.",
+                        "That's a good point. I hadn't thought of it that way.",
+                        "What else do you enjoy doing in your free time?",
+                        "I've had a similar experience before!",
+                        "That's cool! What got you into that?",
+                        "I feel the same way sometimes.",
+                        "Have you always been passionate about that?",
+                        "I'm curious - what do you think about...?"
+                    ];
+                    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                    
+                    const partnerMessage = document.createElement('div');
+                    partnerMessage.className = 'flex justify-start mb-2';
+                    partnerMessage.innerHTML = `
+                        <div class="message bg-gray-200 text-gray-800 rounded-lg py-2 px-4 shadow">
+                            ${randomResponse}
+                            <div class="text-xs text-gray-500 mt-1">
+                                ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </div>
+                        </div>
+                    `;
+                    chatArea.appendChild(partnerMessage);
+                    chatArea.scrollTop = chatArea.scrollHeight;
+                    
+                    // Store message in chat history
+                    chatMessages.push({
+                        sender: currentPartner,
+                        content: randomResponse,
+                        timestamp: new Date()
+                    });
+                }
+            }, responseTime);
+        }
+
+        function skipUser() {
+            if (currentPartner) {
+                if (isInCall) {
+                    endCall();
+                }
+                
+                // Remove users from busy list
+                busyUsers.delete(username);
+                busyUsers.delete(currentPartner);
+                
+                const chatArea = document.getElementById('chatArea');
+                chatArea.innerHTML += `
+                    <div class="text-center text-gray-500 my-4">
+                        <p>You've disconnected from ${currentPartner}</p>
+                    </div>
+                `;
+                
+                // Reset chat state
+                currentPartner = null;
+                chatMessages = [];
+                disableChat();
+                
+                // Find a new match after a brief pause
+                setTimeout(findMatch, 1000);
+            }
+        }
+
+        function updateOnlineCount() {
+            document.getElementById('onlineCount').textContent = `${onlineUsers.size} online`;
+        }
+
+        // Handle typing events to show "user is typing"
+        document.getElementById('messageInput').addEventListener('input', () => {
+            if (!isTyping && currentPartner) {
+                isTyping = true;
+                // In a real app, this would notify the server that the user is typing
+            }
+            
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                isTyping = false;
+                // In a real app, this would notify the server that the user stopped typing
+            }, 1000);
+        });
+
+        // Handle enter key in message input
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Handle enter key in username input
+        document.getElementById('usernameInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                setUsername();
+            }
+        });
+
+        // Emoji button functionality (simplified)
+        document.getElementById('emojiBtn').addEventListener('click', () => {
+            const messageInput = document.getElementById('messageInput');
+            const emojis = ['😊', '👋', '❤️', '👍', '😂', '🙌', '🎉'];
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            messageInput.value += randomEmoji;
+            messageInput.focus();
+        });
+        
+        // Voice and video call functionality
+        function startCall() {
+            if (!currentPartner || isInCall) return;
+            
+            isInCall = true;
+            
+            // Show call interface
+            const callContainer = document.getElementById('callContainer');
+            callContainer.classList.remove('hidden');
+            document.getElementById('chatArea').classList.add('hidden');
+            document.getElementById('callPartnerName').textContent = currentPartner;
+            
+            // Simulate connecting to call
+            setTimeout(() => {
+                // Hide connecting overlay
+                document.getElementById('connectingOverlay').classList.add('hidden');
+                document.getElementById('callStatus').innerHTML = '<i class="bi bi-telephone-fill"></i> Voice connected';
+                
+                // Show call connected message in chat when call is finished
+                const chatArea = document.getElementById('chatArea');
+                const callMessage = document.createElement('div');
+                callMessage.className = 'text-center text-gray-500 my-4';
+                callMessage.innerHTML = `<p><i class="bi bi-telephone-fill"></i> Voice call started with ${currentPartner}</p>`;
+                chatArea.appendChild(callMessage);
+            }, 2000);
+        }
+        
+        function endCall() {
+            if (!isInCall) return;
+            
+            isInCall = false;
+            isMicOn = true;
+            isVideoOn = false;
+            
+            // Hide call interface
+            hideCallInterface();
+            
+            // Show call ended message
+            const chatArea = document.getElementById('chatArea');
+            chatArea.classList.remove('hidden');
+            
+            const callMessage = document.createElement('div');
+            callMessage.className = 'text-center text-gray-500 my-4';
+            callMessage.innerHTML = `<p><i class="bi bi-telephone-x"></i> Call with ${currentPartner} ended</p>`;
+            chatArea.appendChild(callMessage);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        
+        function hideCallInterface() {
+            const callContainer = document.getElementById('callContainer');
+            callContainer.classList.add('hidden');
+            document.getElementById('chatArea').classList.remove('hidden');
+            document.getElementById('connectingOverlay').classList.remove('hidden');
+            
+            // Reset controls
+            document.getElementById('micBtn').innerHTML = '<i class="bi bi-mic-fill"></i>';
+            document.getElementById('videoBtn').innerHTML = '<i class="bi bi-camera-video-off-fill"></i>';
+            document.getElementById('localVideo').innerHTML = `
+                <div class="flex items-center justify-center h-full text-white text-xs">
+                    <i class="bi bi-camera-video-off-fill mr-1"></i> Video off
+                </div>
+            `;
+        }
+        
+        function toggleMic() {
+            isMicOn = !isMicOn;
+            const micBtn = document.getElementById('micBtn');
+            
+            if (isMicOn) {
+                micBtn.innerHTML = '<i class="bi bi-mic-fill"></i>';
+            } else {
+                micBtn.innerHTML = '<i class="bi bi-mic-mute-fill"></i>';
+            }
+            
+            // Update call status
+            document.getElementById('callStatus').innerHTML = isMicOn ? 
+                '<i class="bi bi-telephone-fill"></i> Voice connected' : 
+                '<i class="bi bi-mic-mute-fill"></i> Microphone muted';
+        }
+        
+        function toggleVideo() {
+            isVideoOn = !isVideoOn;
+            const videoBtn = document.getElementById('videoBtn');
+            const localVideo = document.getElementById('localVideo');
+            
+            if (isVideoOn) {
+                videoBtn.innerHTML = '<i class="bi bi-camera-video-fill"></i>';
+                localVideo.innerHTML = `
+                    <div style="background-image: url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&h=200&ixid=MnwxfDB8MXxyYW5kb218MHx8cGVyc29ufHx8fHx8MTY4NTQwMzAyMA&ixlib=rb-4.0.3&q=80&w=300'); background-size: cover; height: 100%;"></div>
+                `;
+                document.getElementById('callStatus').innerHTML = '<i class="bi bi-camera-video-fill"></i> Video enabled';
+            } else {
+                videoBtn.innerHTML = '<i class="bi bi-camera-video-off-fill"></i>';
+                localVideo.innerHTML = `
+                    <div class="flex items-center justify-center h-full text-white text-xs">
+                        <i class="bi bi-camera-video-off-fill mr-1"></i> Video off
+                    </div>
+                `;
+                document.getElementById('callStatus').innerHTML = '<i class="bi bi-telephone-fill"></i> Voice only';
+            }
+        }
+
+        // Handle window close/refresh to disconnect properly
+        window.addEventListener('beforeunload', () => {
+            if (username) {
+                onlineUsers.delete(username);
+                busyUsers.delete(username);
+                // In a real app, this would notify the server that the user has disconnected
+            }
+        });
+
+        // Utility function to escape HTML to prevent XSS
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag]));
+        }
+        
+        // Initialize interests for simulated users
+        function initializeUserInterests() {
+            const allInterests = ['Coffee', 'Books', 'Movies', 'Hiking', 'Tech', 
+                'Music', 'Travel', 'Cooking', 'Sports', 'Art', 'Gaming', 'Fitness'];
+                
+            // Generate random interests for simulated users
+            return allInterests.filter(() => Math.random() > 0.5).slice(0, 3 + Math.floor(Math.random() * 4));
+        }
+        
+        // Simulate some random online users for demo purposes
+        function simulateRandomUsers() {
+            const randomNames = ['Coffee_Lover', 'Bookworm92', 'MountainHiker', 'TechGuru', 'PizzaFanatic', 
+                'SunnyDay', 'MusicJunkie', 'TravelBug', 'FilmBuff', 'GymRat'];
+            
+            const numUsers = 3 + Math.floor(Math.random() * 8); // 3-10 users
+            
+            for (let i = 0; i < numUsers; i++) {
+                const simulatedUser = `${randomNames[i]}${Math.floor(Math.random() * 100)}`;
+                onlineUsers.add(simulatedUser);
+                userInterestsMap.set(simulatedUser, initializeUserInterests());
+            }
+            
+            updateOnlineCount();
+        }
+        
+        // Show interests button event
+        document.getElementById('showInterestsBtn').addEventListener('click', toggleInterestsPopup);
+        
+        // Call this after a short delay to simulate other users joining
+        setTimeout(simulateRandomUsers, 3000);
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
